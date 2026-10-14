@@ -49,3 +49,61 @@ AeroSentry was evaluated against the official Copernicus Emergency Management Se
 ```bash
 git clone [https://github.com/Kumar7Kanishk/Flood_Evacuation_Planning_System.git](https://github.com/Kumar7Kanishk/Flood_Evacuation_Planning_System.git)
 cd Flood_Evacuation_Planning_System
+2. Set Up Python Backend
+Bash
+pip install -r requirements.txt
+3. Set Up Frontend Web Dashboard
+Bash
+npm install
+🖥️ Running the Application
+Option A: Complete End-to-End Execution
+Run the full satellite ingestion, damage analysis, and cut-off routing pipeline:
+
+Bash
+python main.py
+Option B: Interactive Dashboard (Frontend + API)
+Terminal 1 — Python FastAPI Server:
+
+Bash
+python -m uvicorn api:app --reload --port 8000
+Terminal 2 — React + Vite UI:
+
+Bash
+npm run dev
+Open http://localhost:5173 in your browser.
+
+📂 Repository File Structure
+Plaintext
+Flood_Evacuation_Planning_System/
+├── api.py                  # FastAPI backend (GloFAS hydrology, SitRep, reverse geocoding)
+├── damage_analysis.py      # Pre-event OSM damage assessment via ohsome API
+├── detect_flood.py         # Sentinel-1 SAR change-detection raster engine
+├── cutoff_analysis.py      # NetworkX road graph connectivity & settlement isolation
+├── main.py                 # Master one-click end-to-end pipeline runner
+├── Client_id.py            # Copernicus / Sentinel Hub OAuth credentials configuration
+├── outputs/
+│   ├── flood_mask.tif      # Generated change-detection flood & debris GeoTIFF
+│   └── damage/             # GeoJSONs, damage_summary.json, and situation_report.json
+├── src/
+│   ├── Dashboard.jsx       # Complete responsive React + Leaflet control dashboard
+│   ├── main.jsx            # React root mount
+│   └── index.css           # Tailwind CSS directives
+├── index.html              # HTML shell with Leaflet stylesheet
+├── package.json            # Node.js dependencies (React, Leaflet, Lucide)
+├── requirements.txt        # Python dependencies (FastAPI, Rasterio, GeoPandas, etc.)
+└── README.md               # System documentation & evaluation guide
+📜 Attributions & Citations
+This project adheres strictly to the required licensing and open data policies:
+
+Sentinel Satellite Data: "Contains modified Copernicus Sentinel data 2026."
+
+Elevation Model: "Produced using Copernicus WorldDEM-30 © DLR e.V. 2010–2014 and © Airbus Defence and Space GmbH 2014–2018 provided under COPERNICUS by the European Union and ESA; all rights reserved."
+
+Vector Infrastructure: "© OpenStreetMap contributors (ODbL)."
+
+Hydrological Forecasting: Global Flood Awareness System (GloFAS) provided by the European Centre for Medium-Range Weather Forecasts (ECMWF) via Open-Meteo API.
+
+Reference Validation: Case study benchmarked against Copernicus Emergency Management Service activation EMSR927 (European Union, Copernicus EMS data).
+
+🛡️ Responsible AI Note
+This application is an educational prototype and research tool developed for the Multimodal AI Hackathon 2026. In accordance with competition guidelines, no imagery or personally identifiable data of victims is utilized.
