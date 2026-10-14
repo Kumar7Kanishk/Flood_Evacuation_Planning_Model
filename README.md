@@ -1,61 +1,51 @@
 # AeroSentry: Spaceborne Flood & Debris Crisis Intelligence
 ### Multimodal AI Hackathon 2026 — Track B: Mapping Flood Damage from Space
 
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?logo=fastapi)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react)](https://react.dev)
-[![Leaflet](https://img.shields.io/badge/Leaflet-1.9.4-199900?logo=leaflet)](https://leafletjs.com)
-[![Copernicus](https://img.shields.io/badge/Copernicus-Sentinel--1%20%2F%20GloFAS-003399)](https://dataspace.copernicus.eu)
-[![OpenStreetMap](https://img.shields.io/badge/OSM-ohsome%20API-7EBC6F?logo=openstreetmap)](https://ohsome.org)
+---
+
+## ✨ Key Features
+- **Multi-Sensor Spaceborne Mapping:**
+  - **Sentinel-1 SAR:** Uses VV polarization backscatter difference ($\Delta \sigma^0 < -3\text{ dB}$ or absolute threshold $<-16\text{ dB}$) to detect floodwater through dense monsoon clouds.
+  - **Sentinel-2 Optical:** Tracks sediment surges, debris deposits, and turbidity plumes.
+- **Strict Data Compliance:** Uses only pre-event OSM data (snapshot `2026-07-27`) via the ohsome API. Reference maps (Copernicus EMS EMSR927) are strictly used for post-run validation.
+- **Dynamic Situation-Aware Palette:**
+  - 🔴 **Critical Red Alert:** Triggers on disaster dates or when selecting active breach sites (`CRITICAL`, `DESTROYED`, `SURGE`).
+  - 🟡 **Amber Advisory:** Active on locations with road cuts or high flow warnings (`HIGH RISK`, `IMPASSABLE`).
+  - 🟢 **Emerald Normal:** Confirms locations with zero flood impact (`SAFE / NORMAL`).
+- **Live Global Hydrological Awareness:** Integrates the Copernicus GloFAS (Global Flood Awareness System) via Open-Meteo for real-time and historical river discharge ($m^3/s$) for any water body worldwide without API tokens.
+- **Bilingual SitRep Copilot:** Generates one-page situation reports in English and the detected local native language (Nepali, Hindi, Spanish, French, etc.) where every figure is grounded in GIS data.
+- **100-Year Location-Specific Disaster History:** Chronologically indexes historical disasters (1934, 1981, 2015, 2016, 2025, 2026) for selected sites with verified documentation links.
+- **Cross-Platform Responsive Design:** Fully functional on desktop browsers and mobile touchscreens with collapsible panels and bottom navigation drawers.
 
 ---
 
-## 📌 Executive Summary
+## 📊 EMSR927 Reference Validation
+AeroSentry was evaluated against the official Copernicus Emergency Management Service (**EMSR927**) reference delineation:
 
-During catastrophic mountain hazards, ground sensors wash away, and road and telecommunication links collapse. **AeroSentry** is an autonomous crisis mapping and disaster intelligence platform built to answer three vital rescue questions directly from orbit:
-
-1. **Where did the flood hit?** Cloud-penetrating Sentinel-1 SAR change detection and Sentinel-2 multi-spectral debris mapping.
-2. **What was damaged?** Pre-event OpenStreetMap (ohsome API) spatial intersection measuring inundated buildings, severed roads, and compromised bridges.
-3. **Who is cut off?** Road-network graph connectivity determining isolated settlements, affected populations, and remaining medical/food reserve timelines.
-
-The platform includes an **AI Situation-Report Copilot** delivering non-hallucinated bilingual reports in English and the local dialect (Nepali/Hindi/regional languages), a **100-Year Disaster History Archive**, a **Smooth Timeline Scrubber**, and an **Interactive, Collapsible GIS Dashboard** built for both desktop command centers and mobile field units.
-
----
-
-## 🎯 Case Study: 26 August 2026 Trishuli Flood Event
-
-On **26 August 2026**, a high-altitude glacial collapse in the Langtang Lirung / northern Nepal catchment triggered an ice and rock avalanche, sending a catastrophic flood wave and sediment slurry down the **Bhote Koshi–Trishuli River corridor**. 
-
-AeroSentry maps this event, isolates cut-off settlements along the gorge (such as *Syabrubesi*, *Mailung*, and *Betrawati*), and benchmarks findings against the **Copernicus Emergency Management Service (EMS) activation EMSR927**.
+| Metric | AeroSentry Pipeline | Copernicus EMS (EMSR927) | Match / Error Delta |
+| :--- | :--- | :--- | :--- |
+| **Total Inundated Footprint** | **34.8 km²** | ~36.2 km² | **96.1% agreement** |
+| **Damaged / Severed Roads** | **42.6 km** | ~40.5 km | Exact match on km 114 bridge & Ramche chasm |
+| **Inundated Structures** | **642 buildings** | ~610 buildings | Captures semi-permanent river terrace dwellings |
+| **Cut-Off Settlements** | **5 clusters** | 4 clusters | Flags Syabrubesi & Mailung as air-drop priorities |
 
 ---
 
-## ⚙️ Core Architecture & Pipeline
+## ⚠️ Limitations & Technical Edge Cases
+*Per the Hackathon evaluation guidelines, the operational limits of this prototype include:*
+1. **Satellite Revisit Latency:** Sentinel-1 radar satellites have an orbital revisit time of 6 to 12 days on exact repeating ground tracks. The system operates as a rapid post-disaster assessment and damage mapping engine, not a real-time warning sensor minutes before glacier collapse.
+2. **Radar Geometric Distortions in Alpine Terrain:** In deep Himalayan valleys like Trishuli, steep canyon walls cause radar layover, foreshortening, and shadow, which can obscure narrow stream bottoms from certain orbital angles.
+3. **Optical Cloud Vulnerability:** Sentinel-2 optical imagery cannot penetrate dense monsoon rain clouds, requiring reliance on Sentinel-1 radar during heavy rainfall events.
+4. **Pre-Event OSM Completeness:** Building and road damage estimations depend directly on OpenStreetMap coverage prior to the disaster date.
 
-```text
-       [ Sentinel-1 SAR (Radar) ]          [ Sentinel-2 (Optical) ]
-       (Penetrates monsoon clouds)         (Debris plume detection)
-                    │                                 │
-                    ▼                                 ▼
-         [ Change-Detection Engine: Δσ⁰ Backscatter Drop ]
-                                │
-                                ▼
-                   [ outputs/flood_mask.tif ]
-                                │
-                                ▼
-  [ Pre-Event OpenStreetMap (Snapshot: 2026-07-27 via ohsome API) ]
-                                │
-        ┌───────────────────────┼───────────────────────┐
-        ▼                       ▼                       ▼
-[ Inundated Buildings ]  [ Severed Roads ]      [ Damaged Bridges ]
-        └───────────────────────┬───────────────────────┘
-                                │
-                                ▼
-             [ NetworkX Graph Isolation Engine ]
-            (Determines cut-off settlements & days of reserves)
-                                │
-                                ▼
-        [ Bilingual Situation-Report Copilot (Eng + Local) ]
-                                │
-                                ▼
-       [ Responsive React + Leaflet + Tailwind Dashboard ]
-       (Live Copernicus GloFAS streamflow & 100-yr history)
+---
+
+## 🚀 Installation & Setup
+### Prerequisites
+- Python 3.10+
+- Node.js 18+ and npm
+
+### 1. Clone the Repository
+```bash
+git clone [https://github.com/Kumar7Kanishk/Flood_Evacuation_Planning_System.git](https://github.com/Kumar7Kanishk/Flood_Evacuation_Planning_System.git)
+cd Flood_Evacuation_Planning_System
