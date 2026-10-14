@@ -33,6 +33,7 @@ import {
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
+  Menu,
 } from "lucide-react";
 
 // Ground disaster survey database
@@ -268,7 +269,23 @@ export default function Dashboard() {
   const layersGroupRef = useRef(null);
   const userClickMarkerRef = useRef(null);
 
-  // Today's date limit (cannot exceed current date)
+  // Screen size detection for responsive mobile layout
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        // Auto-fold panels on initial small screen load to let map breathe
+        setIsLeftPanelOpen(false);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Today's date limit (strictly capped at current date)
   const todayStr = new Date().toISOString().slice(0, 10);
   const [selectedDate, setSelectedDate] = useState("2026-08-26");
   const [currentTimeDisplay, setCurrentTimeDisplay] = useState("");
@@ -280,8 +297,10 @@ export default function Dashboard() {
     timelineMax
   );
 
-  // Collapsible panel states for clean map view
-  const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
+  const isEventDate = selectedDate === "2026-08-26";
+
+  // Collapsible panel states
+  const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(window.innerWidth >= 768);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
 
   // UI modes & overlays
@@ -300,7 +319,7 @@ export default function Dashboard() {
   const [sitRepLang, setSitRepLang] = useState("en");
   const [sitRepData, setSitRepData] = useState(null);
 
-  // Overall statistics
+  // Baseline summary
   const [summary, setSummary] = useState({
     flood: { area_km2: 34.8 },
     roads: { flooded_length_km: 42.6, segments_affected: 19 },
@@ -330,7 +349,7 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Strict spatial evaluator (avoids broad municipality snapping)
+  // Strict spatial evaluator
   const evaluateGroundCoordinates = (lat, lng, queryDate) => {
     for (const loc of GROUND_LOCATIONS) {
       const distKm = Math.hypot(lat - loc.coords[0], (lng - loc.coords[1]) * Math.cos((lat * Math.PI) / 180)) * 111.0;
@@ -532,7 +551,7 @@ export default function Dashboard() {
 
     const map = L.map(mapContainerRef.current, {
       center: [28.1600, 85.3400],
-      zoom: 12,
+      zoom: isMobile ? 11 : 12,
       minZoom: 3,
       maxZoom: 20,
       zoomControl: false,
@@ -568,6 +587,9 @@ export default function Dashboard() {
       userClickMarkerRef.current = newMarker;
 
       queryLocationForDate(lat, lng, selectedDate);
+      if (isMobile) {
+        setIsRightPanelOpen(true); // Open panel on mobile so user sees the clicked metrics
+      }
     });
 
     setTimeout(() => map.invalidateSize(), 150);
@@ -631,7 +653,7 @@ export default function Dashboard() {
       }
     }, 250);
     return () => clearTimeout(timer);
-  }, [isLeftPanelOpen, isRightPanelOpen]);
+  }, [isLeftPanelOpen, isRightPanelOpen, isMobile]);
 
   // Fetch backend data
   const fetchBackendData = async () => {
@@ -696,6 +718,7 @@ export default function Dashboard() {
         setSelectedLocation(zone);
         map.flyTo(zone.coords, 14, { duration: 1.2 });
         queryLocationForDate(zone.coords[0], zone.coords[1], selectedDate);
+        if (isMobile) setIsRightPanelOpen(true);
       });
 
       marker.bindPopup(`
@@ -769,6 +792,11 @@ export default function Dashboard() {
     userClickMarkerRef.current = marker;
     setShowSuggestions(false);
     queryLocationForDate(item.coords[0], item.coords[1], selectedDate);
+
+    if (isMobile) {
+      setIsLeftPanelOpen(false);
+      setIsRightPanelOpen(true);
+    }
   };
 
   const handleSearchSubmit = (e) => {
@@ -805,7 +833,7 @@ export default function Dashboard() {
     setShowSitRepModal(true);
   };
 
-  // DYNAMIC SITUATION COLOR PALETTE LOGIC
+  // Dynamic Situation Colors
   const currentSeverity = (selectedLocation.alertLevel || selectedLocation.status || "").toUpperCase();
   const isCritical = currentSeverity.includes("CRITICAL") || currentSeverity.includes("DESTROYED") || currentSeverity.includes("SURGE");
   const isHighRisk = currentSeverity.includes("HIGH") || currentSeverity.includes("IMPASSABLE") || currentSeverity.includes("OFFLINE") || currentSeverity.includes("ELEVATED");
@@ -836,26 +864,21 @@ export default function Dashboard() {
     : "bg-slate-700 text-slate-300 border border-slate-600";
 
   return (
-    <div style={{ position: "relative", height: "100vh", width: "100vw", overflow: "hidden", backgroundColor: "#111317" }}>
+    <div className="relative h-screen w-screen overflow-hidden bg-[#111317] select-none font-sans">
       {/* 1. MAP VIEWPORT */}
       <div
         ref={mapContainerRef}
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          height: "100%",
-          width: "100%",
-          zIndex: 1,
-          backgroundColor: "#111317",
-        }}
+        className="absolute inset-0 h-full w-full z-0 bg-[#111317]"
       />
 
-      {/* 2. LEFT COLUMN (COLLAPSIBLE / FOLDABLE) */}
+      {/* 2. LEFT COLUMN: SEARCH + GROUND SURVEY SITES (RESPONSIVE) */}
       {isLeftPanelOpen ? (
         <div
-          style={{ position: "absolute", top: 20, left: 20, zIndex: 1000, width: 330 }}
-          className="flex flex-col gap-2.5 max-h-[94vh] transition-all duration-300"
+          className={`absolute z-[1000] flex flex-col gap-2.5 transition-all duration-300 ${
+            isMobile
+              ? "top-3 left-3 right-3 max-h-[82vh]"
+              : "top-5 left-5 w-[330px] max-h-[94vh]"
+          }`}
         >
           {/* Search Bar with Collapse Button */}
           <div className="flex items-center gap-1.5">
@@ -865,7 +888,7 @@ export default function Dashboard() {
             >
               <input
                 type="text"
-                placeholder="Search any river, city, or country..."
+                placeholder="Search river, city, or site..."
                 value={searchQuery}
                 onFocus={() => setShowSuggestions(true)}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -886,14 +909,14 @@ export default function Dashboard() {
             <button
               onClick={() => setIsLeftPanelOpen(false)}
               className="p-2.5 rounded-lg bg-[#16181d]/95 hover:bg-slate-800 border border-slate-700/80 text-slate-400 hover:text-white transition shadow-xl shrink-0"
-              title="Fold Left Panel for Full View"
+              title="Fold Panel"
             >
               <PanelLeftClose className="w-4 h-4" />
             </button>
           </div>
 
           {showSuggestions && suggestions.length > 0 && (
-            <div className="bg-[#16181d]/95 backdrop-blur-md border border-slate-700/80 rounded-lg shadow-2xl overflow-hidden max-h-56 overflow-y-auto">
+            <div className="bg-[#16181d]/95 backdrop-blur-md border border-slate-700/80 rounded-lg shadow-2xl overflow-hidden max-h-52 overflow-y-auto">
               {suggestions.map((place, idx) => (
                 <div
                   key={idx}
@@ -910,7 +933,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* DATE & TIME CONTROL (STRICTLY CAPPED AT TODAY'S DATE) */}
+          {/* DATE & TIME (IST) CONTROL CARD */}
           <div className={`p-2.5 rounded-xl shadow-xl flex flex-col gap-2 transition-all duration-300 border ${
             isCritical
               ? "bg-[#200e12]/95 border-rose-600/70 shadow-rose-950/60" 
@@ -932,7 +955,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => stepDate(-1)}
-                className="p-1.5 bg-[#121418] hover:bg-slate-800 border border-slate-700 rounded text-slate-300 hover:text-white transition"
+                className="p-2 bg-[#121418] hover:bg-slate-800 border border-slate-700 rounded text-slate-300 hover:text-white transition touch-manipulation"
                 title="Previous Day"
               >
                 <SkipBack className="w-3.5 h-3.5" />
@@ -942,7 +965,7 @@ export default function Dashboard() {
                 value={selectedDate}
                 max={todayStr}
                 onChange={(e) => handleDateChange(e.target.value)}
-                className={`border text-white text-xs px-2 py-1 rounded w-full outline-none transition text-center font-mono ${
+                className={`border text-white text-xs px-2 py-1.5 rounded w-full outline-none transition text-center font-mono ${
                   isCritical 
                     ? "bg-[#170a0d] border-rose-700 focus:border-rose-500 font-bold" 
                     : "bg-[#121418] border-slate-700 focus:border-cyan-500"
@@ -951,7 +974,7 @@ export default function Dashboard() {
               <button
                 onClick={() => stepDate(1)}
                 disabled={selectedDate >= todayStr}
-                className={`p-1.5 bg-[#121418] border border-slate-700 rounded transition ${
+                className={`p-2 bg-[#121418] border border-slate-700 rounded transition touch-manipulation ${
                   selectedDate >= todayStr
                     ? "opacity-30 cursor-not-allowed text-slate-600"
                     : "hover:bg-slate-800 text-slate-300 hover:text-white"
@@ -962,7 +985,7 @@ export default function Dashboard() {
               </button>
               <button
                 onClick={() => handleDateChange("2026-08-26")}
-                className={`text-[10px] font-bold px-2 py-1.5 rounded shrink-0 transition border ${
+                className={`text-[10px] font-bold px-2 py-1.5 rounded shrink-0 transition border touch-manipulation ${
                   isEventDate
                     ? "bg-rose-600 text-white border-rose-400 shadow-md shadow-rose-900"
                     : "bg-rose-900/40 hover:bg-rose-900/70 border-rose-600/50 text-rose-300"
@@ -973,7 +996,7 @@ export default function Dashboard() {
               </button>
             </div>
 
-            {/* Slider capped at today's timestamp */}
+            {/* Slider */}
             <div className="flex flex-col gap-1 pt-1">
               <input
                 type="range"
@@ -982,7 +1005,7 @@ export default function Dashboard() {
                 step={86400000}
                 value={currentSliderTime}
                 onChange={handleSliderChange}
-                className="w-full accent-cyan-400 cursor-pointer h-1.5 bg-slate-800 rounded-lg appearance-none"
+                className="w-full accent-cyan-400 cursor-pointer h-2 bg-slate-800 rounded-lg appearance-none touch-manipulation"
               />
               <div className="flex justify-between text-[9px] text-slate-500 font-mono">
                 <span>Aug 01</span>
@@ -1006,12 +1029,12 @@ export default function Dashboard() {
               </span>
             </div>
 
-            <div className="p-2 space-y-2 overflow-y-auto max-h-[26vh]">
+            <div className={`p-2 space-y-2 overflow-y-auto ${isMobile ? "max-h-[22vh]" : "max-h-[26vh]"}`}>
               {GROUND_LOCATIONS.map((zone) => (
                 <div
                   key={zone.id}
                   onClick={() => selectAndFlyTo(zone)}
-                  className={`p-2.5 rounded-lg border transition cursor-pointer flex flex-col gap-1 ${
+                  className={`p-2.5 rounded-lg border transition cursor-pointer flex flex-col gap-1 touch-manipulation ${
                     selectedLocation.id === zone.id
                       ? zone.isFlooded
                         ? "bg-rose-950/50 border-rose-500 shadow-md"
@@ -1048,182 +1071,162 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Map Mode Selector */}
-          <div className="bg-[#16181d]/95 backdrop-blur-md border border-slate-700/80 p-2.5 rounded-lg shadow-xl flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-slate-300 text-xs font-semibold pl-1">
-              <Globe className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Map Mode</span>
+          {/* Map Mode & Overlays row */}
+          <div className="flex gap-2">
+            <div className="flex-1 bg-[#16181d]/95 backdrop-blur-md border border-slate-700/80 p-2 rounded-lg shadow-xl flex items-center justify-between">
+              <div className="flex gap-1 w-full justify-between">
+                <button
+                  onClick={() => setMapMode("satellite")}
+                  className={`px-2 py-1 text-[10px] font-medium rounded transition border flex-1 text-center ${
+                    mapMode === "satellite"
+                      ? "bg-cyan-600/30 text-cyan-300 border-cyan-500"
+                      : "bg-slate-800 text-slate-400 border-slate-700"
+                  }`}
+                >
+                  Satellite
+                </button>
+                <button
+                  onClick={() => setMapMode("dark")}
+                  className={`px-2 py-1 text-[10px] font-medium rounded transition border flex-1 text-center ${
+                    mapMode === "dark"
+                      ? "bg-cyan-600/30 text-cyan-300 border-cyan-500"
+                      : "bg-slate-800 text-slate-400 border-slate-700"
+                  }`}
+                >
+                  Dark
+                </button>
+                <button
+                  onClick={() => setMapMode("topo")}
+                  className={`px-2 py-1 text-[10px] font-medium rounded transition border flex-1 text-center ${
+                    mapMode === "topo"
+                      ? "bg-cyan-600/30 text-cyan-300 border-cyan-500"
+                      : "bg-slate-800 text-slate-400 border-slate-700"
+                  }`}
+                >
+                  Topo
+                </button>
+              </div>
             </div>
-            <div className="flex gap-1">
-              <button
-                onClick={() => setMapMode("satellite")}
-                className={`flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded transition border ${
-                  mapMode === "satellite"
-                    ? "bg-cyan-600/30 text-cyan-300 border-cyan-500"
-                    : "bg-slate-800 text-slate-400 border-slate-700 hover:text-white"
-                }`}
-              >
-                <Globe className="w-3 h-3" />
-                Satellite
-              </button>
-              <button
-                onClick={() => setMapMode("dark")}
-                className={`flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded transition border ${
-                  mapMode === "dark"
-                    ? "bg-cyan-600/30 text-cyan-300 border-cyan-500"
-                    : "bg-slate-800 text-slate-400 border-slate-700 hover:text-white"
-                }`}
-              >
-                <Moon className="w-3 h-3" />
-                Dark
-              </button>
-              <button
-                onClick={() => setMapMode("topo")}
-                className={`flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded transition border ${
-                  mapMode === "topo"
-                    ? "bg-cyan-600/30 text-cyan-300 border-cyan-500"
-                    : "bg-slate-800 text-slate-400 border-slate-700 hover:text-white"
-                }`}
-              >
-                <Mountain className="w-3 h-3" />
-                Topo
-              </button>
-            </div>
-          </div>
 
-          {/* Satellite Overlays */}
-          <div className="bg-[#16181d]/90 backdrop-blur-md border border-slate-700/80 p-2 rounded-lg shadow-xl flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-slate-300 text-xs font-semibold pl-1">
-              <Layers className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Overlays</span>
-            </div>
-            <div className="flex gap-1.5">
+            <div className="bg-[#16181d]/90 backdrop-blur-md border border-slate-700/80 p-2 rounded-lg shadow-xl flex items-center gap-1">
               <button
                 onClick={() => setShowSentinel1(!showSentinel1)}
-                className={`px-2 py-1 text-[11px] font-medium rounded transition border ${
+                className={`px-2 py-1 text-[10px] font-medium rounded transition border ${
                   showSentinel1
                     ? "bg-emerald-600/30 text-emerald-300 border-emerald-500"
                     : "bg-slate-800 text-slate-400 border-slate-700"
                 }`}
               >
-                Sentinel-1 (SAR)
+                SAR
               </button>
               <button
                 onClick={() => setShowSentinel2(!showSentinel2)}
-                className={`px-2 py-1 text-[11px] font-medium rounded transition border ${
+                className={`px-2 py-1 text-[10px] font-medium rounded transition border ${
                   showSentinel2
                     ? "bg-emerald-600/30 text-emerald-300 border-emerald-500"
                     : "bg-slate-800 text-slate-400 border-slate-700"
                 }`}
               >
-                Sentinel-2 (Opt)
+                Opt
               </button>
             </div>
           </div>
         </div>
-      ) : (
-        /* FOLDED LEFT CHIP */
-        <button
-          onClick={() => setIsLeftPanelOpen(true)}
-          style={{ position: "absolute", top: 20, left: 20, zIndex: 1000 }}
-          className="flex items-center gap-2 bg-[#16181d]/95 hover:bg-slate-800 border border-slate-700 px-3 py-2 rounded-lg text-white text-xs font-semibold shadow-2xl transition"
-          title="Unfold Controls & Survey Sites"
-        >
-          <PanelLeftOpen className="w-4 h-4 text-cyan-400" />
-          <span>Open Controls</span>
-        </button>
-      )}
+      ) : null}
 
-      {/* 3. RIGHT COLUMN: CONTROL & INFO PANEL (DYNAMIC DANGER COLOR PALETTE) */}
+      {/* 3. RIGHT COLUMN: CONTROL & INFO PANEL (RESPONSIVE) */}
       {isRightPanelOpen ? (
         <div
-          style={{ position: "absolute", top: 20, right: 20, zIndex: 1000, width: 440 }}
-          className={`backdrop-blur-md rounded-xl shadow-2xl flex flex-col max-h-[94vh] overflow-hidden transition-all duration-300 border ${panelThemeClass}`}
+          className={`absolute z-[1000] backdrop-blur-md rounded-xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 border ${panelThemeClass} ${
+            isMobile
+              ? "bottom-14 left-3 right-3 max-h-[68vh]"
+              : "top-5 right-5 w-[440px] max-h-[94vh]"
+          }`}
         >
           {/* Header with Fold Button */}
-          <div className={`p-3.5 border-b flex items-center justify-between transition-colors duration-300 ${panelHeaderClass}`}>
-            <div className="flex items-center gap-2">
+          <div className={`p-3 border-b flex items-center justify-between transition-colors duration-300 ${panelHeaderClass}`}>
+            <div className="flex items-center gap-2 overflow-hidden pr-1">
               <button
                 onClick={() => setIsRightPanelOpen(false)}
-                className="p-1.5 rounded-md hover:bg-black/20 text-slate-400 hover:text-white transition mr-0.5"
-                title="Fold Panel for Full Map View"
+                className="p-1 rounded-md hover:bg-black/20 text-slate-400 hover:text-white transition shrink-0"
+                title="Fold Panel"
               >
-                <PanelRightClose className="w-4 h-4" />
+                {isMobile ? <X className="w-4 h-4" /> : <PanelRightClose className="w-4 h-4" />}
               </button>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className={`w-2.5 h-2.5 rounded-full ${isCritical ? 'bg-rose-500 animate-ping' : isHighRisk ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`}></span>
-                  <h2 className={`text-xs uppercase tracking-wider font-bold ${isCritical ? 'text-rose-100' : 'text-white'}`}>
-                    {isCritical ? "CRITICAL DISASTER CONTROL" : isHighRisk ? "HAZARD ADVISORY CONTROL" : "Normal Field Monitoring"}
+              <div className="overflow-hidden">
+                <div className="flex items-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${isCritical ? 'bg-rose-500 animate-ping' : isHighRisk ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`}></span>
+                  <h2 className={`text-xs uppercase tracking-wider font-bold truncate ${isCritical ? 'text-rose-100' : 'text-white'}`}>
+                    {isCritical ? "CRITICAL DISASTER CONTROL" : isHighRisk ? "HAZARD ADVISORY" : "Field Monitoring"}
                   </h2>
                 </div>
-                <p className={`text-[10px] font-mono mt-0.5 truncate max-w-[210px] ${isCritical ? 'text-rose-300 font-semibold' : 'text-cyan-400'}`}>
+                <p className={`text-[10px] font-mono truncate ${isCritical ? 'text-rose-300 font-semibold' : 'text-cyan-400'}`}>
                   Inspecting: {selectedLocation.name}
                 </p>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-1.5 shrink-0">
               <button
                 onClick={triggerPipeline}
                 disabled={isRunningPipeline}
-                className={`flex items-center gap-1 text-white text-xs font-semibold px-2.5 py-1.5 rounded-md transition shadow ${
+                className={`flex items-center gap-1 text-white text-xs font-semibold px-2 py-1 rounded-md transition shadow ${
                   isCritical ? "bg-rose-600 hover:bg-rose-500 shadow-rose-950" : "bg-blue-600 hover:bg-blue-500"
                 }`}
               >
                 {isRunningPipeline ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <RefreshCw className="w-3 h-3 animate-spin" />
                 ) : (
-                  <Play className="w-3.5 h-3.5" />
+                  <Play className="w-3 h-3" />
                 )}
                 Run AI
               </button>
               <button
                 onClick={openSitRepModal}
-                className={`flex items-center gap-1 text-white text-xs font-semibold px-2.5 py-1.5 rounded-md transition shadow ${
+                className={`flex items-center gap-1 text-white text-xs font-semibold px-2 py-1 rounded-md transition shadow ${
                   isCritical ? "bg-rose-700 hover:bg-rose-600 shadow-rose-950" : "bg-emerald-600 hover:bg-emerald-500"
                 }`}
               >
-                <FileDown className="w-3.5 h-3.5" />
+                <FileDown className="w-3 h-3" />
                 SitRep
               </button>
             </div>
           </div>
 
-          {/* 4-Tab Navigator with LOCATION-SPECIFIC HISTORY */}
-          <div className="grid grid-cols-4 border-b border-black/30 p-1.5 gap-1 bg-black/20">
+          {/* 4-Tab Navigator */}
+          <div className="grid grid-cols-4 border-b border-black/30 p-1 gap-1 bg-black/20">
             <button
               onClick={() => setActiveTab("summary")}
-              className={`py-2 px-1 text-center rounded text-[11px] font-semibold uppercase tracking-wider transition ${
+              className={`py-1.5 px-1 text-center rounded text-[11px] font-semibold uppercase tracking-wider transition ${
                 activeTab === "summary"
-                  ? isCritical ? "bg-rose-600 text-white shadow-md shadow-rose-950" : isHighRisk ? "bg-amber-600 text-white shadow" : "bg-slate-700 text-white shadow"
-                  : isCritical ? "text-rose-300 hover:bg-rose-950/40" : "text-slate-400 hover:bg-slate-800/50"
+                  ? isCritical ? "bg-rose-600 text-white shadow-md" : isHighRisk ? "bg-amber-600 text-white" : "bg-slate-700 text-white"
+                  : "text-slate-400 hover:bg-slate-800/50"
               }`}
             >
               Summary
             </button>
             <button
               onClick={() => setActiveTab("cutoff")}
-              className={`py-2 px-1 text-center rounded text-[11px] font-semibold uppercase tracking-wider transition ${
+              className={`py-1.5 px-1 text-center rounded text-[11px] font-semibold uppercase tracking-wider transition ${
                 activeTab === "cutoff"
-                  ? isCritical ? "bg-rose-600 text-white shadow-md shadow-rose-950" : isHighRisk ? "bg-amber-600 text-white shadow" : "bg-slate-700 text-white shadow"
-                  : isCritical ? "text-rose-300 hover:bg-rose-950/40" : "text-slate-400 hover:bg-slate-800/50"
+                  ? isCritical ? "bg-rose-600 text-white shadow-md" : isHighRisk ? "bg-amber-600 text-white" : "bg-slate-700 text-white"
+                  : "text-slate-400 hover:bg-slate-800/50"
               }`}
             >
               Cut-Off
             </button>
             <button
               onClick={() => setActiveTab("sites")}
-              className={`py-2 px-1 text-center rounded text-[11px] font-semibold uppercase tracking-wider transition text-ellipsis overflow-hidden whitespace-nowrap ${
+              className={`py-1.5 px-1 text-center rounded text-[11px] font-semibold uppercase tracking-wider transition truncate ${
                 activeTab === "sites"
-                  ? isCritical ? "bg-rose-600 text-white shadow-md shadow-rose-950" : isHighRisk ? "bg-amber-600 text-white shadow" : "bg-slate-700 text-white shadow"
-                  : isCritical ? "text-rose-300 hover:bg-rose-950/40" : "text-slate-400 hover:bg-slate-800/50"
+                  ? isCritical ? "bg-rose-600 text-white shadow-md" : isHighRisk ? "bg-amber-600 text-white" : "bg-slate-700 text-white"
+                  : "text-slate-400 hover:bg-slate-800/50"
               }`}
             >
-              Flood Sites
+              Sites
             </button>
             <button
               onClick={() => setActiveTab("history")}
-              className={`py-2 px-1 text-center rounded text-[11px] font-semibold uppercase tracking-wider transition flex items-center justify-center gap-1 ${
+              className={`py-1.5 px-1 text-center rounded text-[11px] font-semibold uppercase tracking-wider transition flex items-center justify-center gap-1 ${
                 activeTab === "history"
                   ? "bg-amber-600 text-white shadow-md shadow-amber-950"
                   : "text-amber-300/80 hover:bg-amber-950/30"
@@ -1235,13 +1238,13 @@ export default function Dashboard() {
           </div>
 
           {/* Tab Contents */}
-          <div className="p-4 overflow-y-auto space-y-3 flex-1">
+          <div className="p-3.5 overflow-y-auto space-y-3 flex-1">
             {/* TAB 1: SUMMARY */}
             {activeTab === "summary" && (
-              <div className="space-y-3">
-                <div className={`p-2.5 rounded-lg flex flex-col gap-1 border transition-colors duration-300 ${
+              <div className="space-y-2.5">
+                <div className={`p-2 rounded-lg flex flex-col gap-1 border transition-colors duration-300 ${
                   isCritical
-                    ? "bg-rose-950/80 border-rose-600 text-rose-100 shadow-sm shadow-rose-900"
+                    ? "bg-rose-950/80 border-rose-600 text-rose-100"
                     : isHighRisk
                     ? "bg-amber-950/60 border-amber-600 text-amber-200"
                     : "bg-slate-800/90 border-slate-700/80 text-slate-300"
@@ -1252,12 +1255,12 @@ export default function Dashboard() {
                       <span>Target Date: <strong className={isCritical ? "text-rose-200" : "text-white"}>{selectedDate}</strong></span>
                     </div>
                     {isEventDate && (
-                      <span className="text-[9px] font-bold uppercase bg-rose-600 text-white px-2 py-0.5 rounded tracking-wide animate-pulse">
+                      <span className="text-[9px] font-bold uppercase bg-rose-600 text-white px-1.5 py-0.5 rounded tracking-wide animate-pulse">
                         Disaster Day
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 text-[10.5px] font-mono text-rose-200 pt-0.5">
+                  <div className="flex items-center gap-1 text-[10px] font-mono text-rose-200">
                     <Clock className="w-3 h-3 text-rose-400 shrink-0" />
                     <span>Flood Surge: <strong>2026-08-26 08:30 NPT (08:15 IST)</strong></span>
                   </div>
@@ -1270,57 +1273,57 @@ export default function Dashboard() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div className={`p-2.5 rounded-lg border transition ${
+                <div className="grid grid-cols-2 gap-2">
+                  <div className={`p-2 rounded-lg border transition ${
                     isCritical ? "bg-[#250d14] border-rose-900/80" : isHighRisk ? "bg-[#25190a] border-amber-900/80" : "bg-[#1e222a] border-slate-800"
                   }`}>
-                    <div className={`flex items-center gap-1 text-[11px] mb-1 ${isCritical ? "text-rose-300" : isHighRisk ? "text-amber-300" : "text-slate-400"}`}>
+                    <div className={`flex items-center gap-1 text-[10px] mb-0.5 ${isCritical ? "text-rose-300" : isHighRisk ? "text-amber-300" : "text-slate-400"}`}>
                       <Compass className="w-3 h-3 text-cyan-400" />
-                      River Flow on Date
+                      River Flow
                     </div>
-                    <div className={`text-xl font-bold ${selectedLocation.isFlooded || isCritical ? 'text-white' : 'text-emerald-400'}`}>
+                    <div className={`text-base font-bold ${selectedLocation.isFlooded || isCritical ? 'text-white' : 'text-emerald-400'}`}>
                       {selectedLocation.stats?.floodedArea}
                     </div>
                   </div>
 
-                  <div className={`p-2.5 rounded-lg border transition ${
+                  <div className={`p-2 rounded-lg border transition ${
                     isCritical ? "bg-[#250d14] border-rose-900/80" : isHighRisk ? "bg-[#25190a] border-amber-900/80" : "bg-[#1e222a] border-slate-800"
                   }`}>
-                    <div className={`flex items-center gap-1 text-[11px] mb-1 ${isCritical ? "text-rose-300" : isHighRisk ? "text-amber-300" : "text-slate-400"}`}>
+                    <div className={`flex items-center gap-1 text-[10px] mb-0.5 ${isCritical ? "text-rose-300" : isHighRisk ? "text-amber-300" : "text-slate-400"}`}>
                       <ShieldAlert className="w-3 h-3 text-rose-400" />
                       Cut-Off Status
                     </div>
-                    <div className={`text-xl font-bold ${isSafe ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    <div className={`text-base font-bold ${isSafe ? 'text-emerald-400' : 'text-rose-400'}`}>
                       {selectedLocation.stats?.cutOffTowns}
                     </div>
                   </div>
 
-                  <div className={`p-2.5 rounded-lg border transition ${
+                  <div className={`p-2 rounded-lg border transition ${
                     isCritical ? "bg-[#250d14] border-rose-900/80" : isHighRisk ? "bg-[#25190a] border-amber-900/80" : "bg-[#1e222a] border-slate-800"
                   }`}>
-                    <div className={`flex items-center gap-1 text-[11px] mb-1 ${isCritical ? "text-rose-300" : isHighRisk ? "text-amber-300" : "text-slate-400"}`}>
+                    <div className={`flex items-center gap-1 text-[10px] mb-0.5 ${isCritical ? "text-rose-300" : isHighRisk ? "text-amber-300" : "text-slate-400"}`}>
                       <Navigation className="w-3 h-3 text-amber-400" />
                       Highway Impact
                     </div>
-                    <div className="text-xl font-bold text-amber-400">
+                    <div className="text-base font-bold text-amber-400">
                       {selectedLocation.stats?.severedRoad}
                     </div>
                   </div>
 
-                  <div className={`p-2.5 rounded-lg border transition ${
+                  <div className={`p-2 rounded-lg border transition ${
                     isCritical ? "bg-[#250d14] border-rose-900/80" : isHighRisk ? "bg-[#25190a] border-amber-900/80" : "bg-[#1e222a] border-slate-800"
                   }`}>
-                    <div className={`flex items-center gap-1 text-[11px] mb-1 ${isCritical ? "text-rose-300" : isHighRisk ? "text-amber-300" : "text-slate-400"}`}>
+                    <div className={`flex items-center gap-1 text-[10px] mb-0.5 ${isCritical ? "text-rose-300" : isHighRisk ? "text-amber-300" : "text-slate-400"}`}>
                       <Building className="w-3 h-3 text-indigo-400" />
-                      Structures Affected
+                      Structures
                     </div>
-                    <div className={`text-xl font-bold ${selectedLocation.isFlooded || isCritical ? 'text-white' : 'text-emerald-400'}`}>
+                    <div className={`text-base font-bold ${selectedLocation.isFlooded || isCritical ? 'text-white' : 'text-emerald-400'}`}>
                       {selectedLocation.stats?.damagedBld}
                     </div>
                   </div>
                 </div>
 
-                <div className={`p-2.5 rounded-lg flex items-start gap-2 border ${
+                <div className={`p-2 rounded-lg flex items-start gap-2 border text-[11px] leading-relaxed ${
                   isCritical
                     ? "bg-rose-950/40 border-rose-800 text-rose-200"
                     : isHighRisk
@@ -1332,13 +1335,13 @@ export default function Dashboard() {
                   ) : (
                     <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                   )}
-                  <div className="text-[11px] leading-relaxed">
-                    <span className="font-semibold">{selectedLocation.isFlooded || isCritical ? "Damage Advisory: " : "Status Assessment: "}</span>
+                  <div>
+                    <span className="font-semibold">{selectedLocation.isFlooded || isCritical ? "Damage Advisory: " : "Status: "}</span>
                     {selectedLocation.warning || selectedLocation.cause}
                   </div>
                 </div>
 
-                <div className={`p-2.5 rounded-lg space-y-1.5 text-xs border ${
+                <div className={`p-2 rounded-lg space-y-1 text-[11px] border ${
                   isCritical ? "bg-[#1a080c] border-rose-900/60 text-rose-100" : "bg-[#121418] border-slate-800 text-slate-300"
                 }`}>
                   <div className="flex justify-between">
@@ -1350,24 +1353,24 @@ export default function Dashboard() {
                     <strong className="text-rose-400 font-mono">{selectedLocation.eventDateTime || "Normal"}</strong>
                   </div>
                   <div className="flex justify-between">
-                    <span className={isCritical ? "text-rose-300" : "text-slate-500"}>Food / Medical Reserves:</span>
+                    <span className={isCritical ? "text-rose-300" : "text-slate-500"}>Reserves:</span>
                     <strong className={selectedLocation.isFlooded || isCritical ? "text-amber-300" : "text-emerald-400"}>
                       {selectedLocation.reserves}
                     </strong>
                   </div>
                   <div className="flex justify-between">
-                    <span className={isCritical ? "text-rose-300" : "text-slate-500"}>Evacuation Base:</span>
-                    <strong className="text-slate-200">{selectedLocation.evacHub}</strong>
+                    <span className={isCritical ? "text-rose-300" : "text-slate-500"}>Evac Hub:</span>
+                    <strong className="text-slate-200 truncate max-w-[200px]">{selectedLocation.evacHub}</strong>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* TAB 2: CUT-OFF ZONES */}
+            {/* TAB 2: CUT-OFF */}
             {activeTab === "cutoff" && (
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 <div className="text-[11px] font-semibold tracking-wider uppercase text-slate-400">
-                  Isolated Settlements Along Corridor
+                  Isolated Settlements
                 </div>
                 {GROUND_LOCATIONS
                   .filter(l => l.isFlooded && l.category.includes("Settlement"))
@@ -1375,46 +1378,38 @@ export default function Dashboard() {
                     <div
                       key={settlement.id}
                       onClick={() => selectAndFlyTo(settlement)}
-                      className={`p-2.5 rounded-lg border transition cursor-pointer ${
+                      className={`p-2 rounded-lg border transition cursor-pointer ${
                         selectedLocation.id === settlement.id
-                          ? "bg-rose-950/60 border-rose-500 shadow-md shadow-rose-950"
-                          : isCritical
-                          ? "bg-[#250d14] border-rose-900/70 hover:border-rose-600"
-                          : "bg-[#1e222a] border-slate-800 hover:border-slate-700 hover:bg-[#252a35]"
+                          ? "bg-rose-950/60 border-rose-500 shadow-md"
+                          : "bg-[#1e222a] border-slate-800 hover:border-slate-700"
                       }`}
                     >
                       <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                          <Crosshair className="w-3.5 h-3.5 text-cyan-400" />
+                        <span className="text-xs font-bold text-white flex items-center gap-1">
+                          <Crosshair className="w-3 h-3 text-cyan-400" />
                           {settlement.name}
                         </span>
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/40">
                           {settlement.alertLevel}
                         </span>
                       </div>
-                      <div className="text-[10px] text-cyan-300 font-mono mt-0.5">
-                        Impact Time: {settlement.eventDateTime}
-                      </div>
-                      <div className="text-[11px] text-slate-400 mt-1">
-                        <span className="text-slate-500">Cause:</span> {settlement.cause}
-                      </div>
-                      <div className="text-[10px] text-slate-400 pt-1.5 flex items-center justify-between">
-                        <span>Population: <strong className="text-white">{settlement.population}</strong></span>
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-slate-500" />
-                          Reserves: <strong className="text-white">{settlement.reserves}</strong>
-                        </div>
+                      <p className="text-[10px] text-slate-400 mt-0.5 leading-tight truncate">
+                        {settlement.cause}
+                      </p>
+                      <div className="text-[10px] text-slate-400 pt-1 flex items-center justify-between">
+                        <span>Pop: <strong className="text-white">{settlement.population}</strong></span>
+                        <span className="text-amber-300 font-mono font-semibold">{settlement.reserves}</span>
                       </div>
                     </div>
                   ))}
               </div>
             )}
 
-            {/* TAB 3: EXACT FLOOD SITES */}
+            {/* TAB 3: SITES */}
             {activeTab === "sites" && (
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 <div className="text-[11px] font-semibold tracking-wider uppercase text-slate-400">
-                  Infrastructure Impact & Field Sites
+                  Infrastructure Impact
                 </div>
                 {GROUND_LOCATIONS
                   .filter(l => !l.category.includes("Settlement") || l.category.includes("Terminal"))
@@ -1422,12 +1417,10 @@ export default function Dashboard() {
                     <div
                       key={site.id}
                       onClick={() => selectAndFlyTo(site)}
-                      className={`p-2.5 rounded-lg border transition cursor-pointer ${
+                      className={`p-2 rounded-lg border transition cursor-pointer ${
                         selectedLocation.id === site.id
                           ? "bg-cyan-950/40 border-cyan-500 shadow-md"
-                          : isCritical
-                          ? "bg-[#250d14] border-rose-900/70 hover:border-rose-600"
-                          : "bg-[#1e222a] border-slate-800 hover:border-slate-700 hover:bg-[#252a35]"
+                          : "bg-[#1e222a] border-slate-800 hover:border-slate-700"
                       }`}
                     >
                       <div className="flex justify-between items-start">
@@ -1442,11 +1435,8 @@ export default function Dashboard() {
                           {site.alertLevel}
                         </span>
                       </div>
-                      <div className="text-[10px] text-cyan-300 font-mono mt-0.5">
-                        Event Time: {site.eventDateTime}
-                      </div>
-                      <div className="text-[11px] text-slate-400 mt-1">{site.cause}</div>
-                      <div className="flex justify-between items-center pt-1.5 text-[10px]">
+                      <div className="text-[10px] text-slate-400 mt-0.5 truncate">{site.cause}</div>
+                      <div className="flex justify-between items-center pt-1 text-[10px]">
                         <span className="text-slate-500">{site.category}</span>
                         <span className="font-mono text-cyan-400">
                           {site.coords[0].toFixed(3)}° N, {site.coords[1].toFixed(3)}° E
@@ -1457,36 +1447,31 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* TAB 4: LOCATION-SPECIFIC DISASTER HISTORY */}
+            {/* TAB 4: HISTORY */}
             {activeTab === "history" && (
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 <div className="flex items-center justify-between text-[11px] font-bold uppercase text-amber-400 border-b border-amber-900/40 pb-1">
                   <div className="flex items-center gap-1.5">
                     <History className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Historical Record for {selectedLocation.name}</span>
+                    <span>Records: {selectedLocation.name}</span>
                   </div>
                   <span className="text-[9px] font-mono bg-amber-950/60 text-amber-300 px-1.5 py-0.5 rounded border border-amber-800/40">
-                    {selectedLocation.history && selectedLocation.history.length > 0
-                      ? `${selectedLocation.history.length} RECORDED`
-                      : "0 RECORDS"}
+                    {selectedLocation.history?.length || 0} EVENTS
                   </span>
                 </div>
 
                 {selectedLocation.history && selectedLocation.history.length > 0 ? (
-                  <div className="space-y-2.5">
-                    <p className="text-[10.5px] text-slate-400 leading-relaxed">
-                      Verified flood, GLOF, or geological disaster records that directly impacted this exact location in the past 100 years:
-                    </p>
+                  <div className="space-y-2">
                     {selectedLocation.history.map((item, idx) => (
                       <div
                         key={idx}
-                        className="bg-[#191510] border border-amber-900/40 hover:border-amber-600/70 p-3 rounded-xl transition flex flex-col gap-1.5"
+                        className="bg-[#191510] border border-amber-900/40 hover:border-amber-600/70 p-2.5 rounded-xl transition flex flex-col gap-1"
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-amber-200">
-                            {item.year} &bull; {item.title || item.event}
+                            {item.year} &bull; {item.title}
                           </span>
-                          <span className="text-[8.5px] font-mono bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/30">
+                          <span className="text-[8.5px] font-mono bg-amber-500/20 text-amber-300 px-1 py-0.2 rounded border border-amber-500/30">
                             {item.date}
                           </span>
                         </div>
@@ -1498,9 +1483,9 @@ export default function Dashboard() {
                         <div className="flex items-center justify-between pt-1 border-t border-amber-950/80">
                           <button
                             onClick={() => handleDateChange(item.date)}
-                            className="text-[10px] bg-amber-950/80 hover:bg-amber-900 text-amber-200 border border-amber-700/50 px-2 py-0.5 rounded transition flex items-center gap-1"
+                            className="text-[9.5px] bg-amber-950/80 hover:bg-amber-900 text-amber-200 border border-amber-700/50 px-2 py-0.5 rounded transition flex items-center gap-1"
                           >
-                            <Calendar className="w-3 h-3 text-amber-400" />
+                            <Calendar className="w-2.5 h-2.5 text-amber-400" />
                             Jump to {item.date}
                           </button>
 
@@ -1520,16 +1505,11 @@ export default function Dashboard() {
                     ))}
                   </div>
                 ) : (
-                  <div className="bg-[#16181d] border border-slate-800 p-4 rounded-xl text-center space-y-2 my-4">
-                    <div className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400">
-                      <Info className="w-4 h-4" />
-                    </div>
-                    <h4 className="text-xs font-bold text-white">No Historical Flood Damage Recorded</h4>
-                    <p className="text-[11px] text-slate-400 leading-relaxed max-w-[320px] mx-auto">
-                      There are no recorded catastrophic glacial lake outbursts (GLOF) or flood washouts on file for <strong className="text-slate-200">{selectedLocation.name}</strong> in the past 100 years.
-                    </p>
-                    <p className="text-[10px] text-slate-500 font-mono">
-                      Terrain and elevation for this sector indicate historic slope stability.
+                  <div className="bg-[#16181d] border border-slate-800 p-3 rounded-xl text-center space-y-1.5 my-2">
+                    <Info className="w-4 h-4 text-emerald-400 mx-auto" />
+                    <h4 className="text-xs font-bold text-white">No Historical Flood Damage</h4>
+                    <p className="text-[10px] text-slate-400 leading-relaxed">
+                      Zero recorded catastrophic glacial lake outbursts on file for <strong className="text-slate-200">{selectedLocation.name}</strong> in 100 years.
                     </p>
                   </div>
                 )}
@@ -1538,44 +1518,59 @@ export default function Dashboard() {
           </div>
 
           {/* Attribution Footer */}
-          <div className="p-2.5 border-t border-black/30 bg-black/20 text-[9px] leading-tight text-slate-400">
-            <div>Contains modified Copernicus Sentinel data 2026. Produced using WorldDEM-30.</div>
-            <div>&copy; OpenStreetMap contributors.</div>
+          <div className="p-2 border-t border-black/30 bg-black/20 text-[8.5px] leading-tight text-slate-400">
+            <div>Copernicus Sentinel data 2026. WorldDEM-30. &copy; OpenStreetMap contributors.</div>
           </div>
         </div>
-      ) : (
-        /* FOLDED RIGHT CHIP */
-        <button
-          onClick={() => setIsRightPanelOpen(true)}
-          style={{ position: "absolute", top: 20, right: 20, zIndex: 1000 }}
-          className={`flex items-center gap-2 border px-3 py-2 rounded-lg text-xs font-semibold shadow-2xl transition ${
-            isCritical
-              ? "bg-[#250d14]/95 border-rose-600 text-rose-200 hover:bg-rose-900"
-              : "bg-[#16181d]/95 hover:bg-slate-800 border-slate-700 text-white"
-          }`}
-          title="Unfold Control & Info Panel"
-        >
-          <PanelRightOpen className={`w-4 h-4 ${isCritical ? "text-rose-400" : "text-cyan-400"}`} />
-          <span>Open Control Panel</span>
-        </button>
+      ) : null}
+
+      {/* 4. MOBILE BOTTOM ACTION DOCK (Visible on mobile screens) */}
+      {isMobile && (
+        <div className="absolute bottom-2 left-3 right-3 z-[1001] bg-[#16181d]/95 backdrop-blur-md border border-slate-700/80 rounded-xl p-1.5 flex justify-around items-center shadow-2xl">
+          <button
+            onClick={() => {
+              setIsLeftPanelOpen(!isLeftPanelOpen);
+              if (isRightPanelOpen) setIsRightPanelOpen(false);
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+              isLeftPanelOpen ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-800"
+            }`}
+          >
+            <Search className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Search & Sites</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setIsRightPanelOpen(!isRightPanelOpen);
+              if (isLeftPanelOpen) setIsLeftPanelOpen(false);
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+              isRightPanelOpen ? "bg-rose-600 text-white" : "text-slate-300 hover:bg-slate-800"
+            }`}
+          >
+            <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+            <span>Control Panel</span>
+          </button>
+        </div>
       )}
 
-      {/* 4. MULTILINGUAL SITREP COPILOT MODAL */}
+      {/* 5. MULTILINGUAL SITREP COPILOT MODAL */}
       {showSitRepModal && (
-        <div className="fixed inset-0 z-[2000] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#16181d] border border-slate-700 w-full max-w-2xl rounded-xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
-            <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-[#121418]">
+        <div className="fixed inset-0 z-[2000] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3">
+          <div className="bg-[#16181d] border border-slate-700 w-full max-w-2xl rounded-xl shadow-2xl flex flex-col max-h-[88vh] overflow-hidden">
+            <div className="p-3 border-b border-slate-800 flex items-center justify-between bg-[#121418]">
               <div className="flex items-center gap-2">
-                <FileDown className="w-5 h-5 text-emerald-400" />
-                <h3 className="text-sm font-bold text-white tracking-wide">
+                <FileDown className="w-4 h-4 text-emerald-400" />
+                <h3 className="text-xs sm:text-sm font-bold text-white tracking-wide">
                   Situation-Report Copilot (Date: {selectedDate})
                 </h3>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="flex bg-slate-800 p-1 rounded-md border border-slate-700">
+              <div className="flex items-center gap-2">
+                <div className="flex bg-slate-800 p-0.5 rounded-md border border-slate-700">
                   <button
                     onClick={() => setSitRepLang("en")}
-                    className={`px-2 py-0.5 text-xs font-semibold rounded ${
+                    className={`px-2 py-0.5 text-[10px] font-semibold rounded ${
                       sitRepLang === "en" ? "bg-emerald-600 text-white" : "text-slate-400"
                     }`}
                   >
@@ -1583,29 +1578,29 @@ export default function Dashboard() {
                   </button>
                   <button
                     onClick={() => setSitRepLang("local")}
-                    className={`px-2 py-0.5 text-xs font-semibold rounded ${
+                    className={`px-2 py-0.5 text-[10px] font-semibold rounded ${
                       sitRepLang === "local" ? "bg-emerald-600 text-white" : "text-slate-400"
                     }`}
                   >
-                    {sitRepData?.local_language || "Local Language"}
+                    {sitRepData?.local_language || "Local"}
                   </button>
                 </div>
                 <button
                   onClick={() => setShowSitRepModal(false)}
                   className="p-1 rounded-md hover:bg-slate-800 text-slate-400 hover:text-white"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            <div className="p-5 overflow-y-auto font-mono text-xs text-slate-300 whitespace-pre-wrap leading-relaxed select-text bg-[#0d0f12]">
+            <div className="p-4 overflow-y-auto font-mono text-[11px] text-slate-300 whitespace-pre-wrap leading-relaxed select-text bg-[#0d0f12]">
               {sitRepLang === "en" ? sitRepData?.report_en : sitRepData?.report_local}
             </div>
 
             <div className="p-3 border-t border-slate-800 flex justify-between items-center bg-[#121418]">
-              <span className="text-[10px] text-slate-500">
-                Verified from satellite raster calculations for {selectedDate}.
+              <span className="text-[9px] text-slate-500 truncate max-w-[150px] sm:max-w-none">
+                Copernicus & GloFAS Verified.
               </span>
               <button
                 onClick={() => {
@@ -1617,10 +1612,10 @@ export default function Dashboard() {
                   a.download = `SitRep_${selectedDate}_${sitRepLang}.txt`;
                   a.click();
                 }}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-1.5 rounded-md transition flex items-center gap-1.5"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-1.5 rounded-md transition flex items-center gap-1"
               >
                 <FileDown className="w-3.5 h-3.5" />
-                Download 1-Page SitRep ({sitRepLang.toUpperCase()})
+                Download ({sitRepLang.toUpperCase()})
               </button>
             </div>
           </div>
