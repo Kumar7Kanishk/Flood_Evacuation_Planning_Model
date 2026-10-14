@@ -15,7 +15,6 @@ import {
   RefreshCw,
   MapPin,
   ChevronRight,
-  ChevronLeft,
   Loader2,
   Globe,
   Moon,
@@ -30,7 +29,6 @@ import {
   SkipBack,
   SkipForward,
   Info,
-  Maximize2,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
@@ -270,12 +268,11 @@ export default function Dashboard() {
   const layersGroupRef = useRef(null);
   const userClickMarkerRef = useRef(null);
 
-  // TODAY'S DATE BOUNDATION: Cannot exceed today (2026-10-14)
+  // Today's date limit (cannot exceed current date)
   const todayStr = new Date().toISOString().slice(0, 10);
   const [selectedDate, setSelectedDate] = useState("2026-08-26");
   const [currentTimeDisplay, setCurrentTimeDisplay] = useState("");
 
-  // Timeline bounds (Slider cannot go past today)
   const timelineMin = new Date("2026-08-01").getTime();
   const timelineMax = new Date(todayStr).getTime();
   const currentSliderTime = Math.min(
@@ -283,13 +280,11 @@ export default function Dashboard() {
     timelineMax
   );
 
-  const isEventDate = selectedDate === "2026-08-26";
-
-  // FOLDABLE / COLLAPSIBLE PANEL STATES
+  // Collapsible panel states for clean map view
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
 
-  // UI state
+  // UI modes & overlays
   const [mapMode, setMapMode] = useState("satellite");
   const [activeTab, setActiveTab] = useState("summary");
   const [showSentinel1, setShowSentinel1] = useState(true);
@@ -305,7 +300,7 @@ export default function Dashboard() {
   const [sitRepLang, setSitRepLang] = useState("en");
   const [sitRepData, setSitRepData] = useState(null);
 
-  // Baseline summary
+  // Overall statistics
   const [summary, setSummary] = useState({
     flood: { area_km2: 34.8 },
     roads: { flooded_length_km: 42.6, segments_affected: 19 },
@@ -335,7 +330,7 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Spatial evaluator
+  // Strict spatial evaluator (avoids broad municipality snapping)
   const evaluateGroundCoordinates = (lat, lng, queryDate) => {
     for (const loc of GROUND_LOCATIONS) {
       const distKm = Math.hypot(lat - loc.coords[0], (lng - loc.coords[1]) * Math.cos((lat * Math.PI) / 180)) * 111.0;
@@ -501,9 +496,7 @@ export default function Dashboard() {
     }
   };
 
-  // Date change handler with STRICT TODAY'S DATE BOUNDATION
   const handleDateChange = (newDate) => {
-    // Clamp to today's date so it never exceeds today
     let clampedDate = newDate;
     if (newDate > todayStr) {
       clampedDate = todayStr;
@@ -630,13 +623,13 @@ export default function Dashboard() {
     setTimeout(() => map.invalidateSize(), 100);
   }, [mapMode]);
 
-  // Resize map whenever panels are folded/unfolded
+  // Re-measure map container whenever panels collapse/expand
   useEffect(() => {
     const timer = setTimeout(() => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.invalidateSize();
       }
-    }, 300);
+    }, 250);
     return () => clearTimeout(timer);
   }, [isLeftPanelOpen, isRightPanelOpen]);
 
@@ -812,6 +805,36 @@ export default function Dashboard() {
     setShowSitRepModal(true);
   };
 
+  // DYNAMIC SITUATION COLOR PALETTE LOGIC
+  const currentSeverity = (selectedLocation.alertLevel || selectedLocation.status || "").toUpperCase();
+  const isCritical = currentSeverity.includes("CRITICAL") || currentSeverity.includes("DESTROYED") || currentSeverity.includes("SURGE");
+  const isHighRisk = currentSeverity.includes("HIGH") || currentSeverity.includes("IMPASSABLE") || currentSeverity.includes("OFFLINE") || currentSeverity.includes("ELEVATED");
+  const isSafe = currentSeverity.includes("SAFE") || currentSeverity.includes("NORMAL") || currentSeverity.includes("UNAFFECTED");
+
+  const panelThemeClass = isCritical
+    ? "bg-[#180a0e]/95 border-rose-600/90 shadow-rose-950/80"
+    : isHighRisk
+    ? "bg-[#1a1309]/95 border-amber-500/80 shadow-amber-950/70"
+    : isSafe
+    ? "bg-[#0b1710]/95 border-emerald-600/80 shadow-emerald-950/70"
+    : "bg-[#16181d]/95 border-slate-700/70";
+
+  const panelHeaderClass = isCritical
+    ? "bg-[#250d14] border-rose-800/80"
+    : isHighRisk
+    ? "bg-[#281a08] border-amber-800/80"
+    : isSafe
+    ? "bg-[#0f2417] border-emerald-800/80"
+    : "bg-[#121418] border-slate-800";
+
+  const panelPillClass = isCritical
+    ? "bg-rose-500/20 text-rose-400 border border-rose-500/40"
+    : isHighRisk
+    ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+    : isSafe
+    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+    : "bg-slate-700 text-slate-300 border border-slate-600";
+
   return (
     <div style={{ position: "relative", height: "100vh", width: "100vw", overflow: "hidden", backgroundColor: "#111317" }}>
       {/* 1. MAP VIEWPORT */}
@@ -889,14 +912,16 @@ export default function Dashboard() {
 
           {/* DATE & TIME CONTROL (STRICTLY CAPPED AT TODAY'S DATE) */}
           <div className={`p-2.5 rounded-xl shadow-xl flex flex-col gap-2 transition-all duration-300 border ${
-            isEventDate 
+            isCritical
               ? "bg-[#200e12]/95 border-rose-600/70 shadow-rose-950/60" 
+              : isHighRisk
+              ? "bg-[#20180e]/95 border-amber-600/70 shadow-amber-950/60"
               : "bg-[#16181d]/95 border-cyan-800/60"
           }`}>
             <div className="flex items-center justify-between text-xs text-slate-300 font-semibold border-b border-slate-800 pb-1.5">
-              <div className={`flex items-center gap-1.5 ${isEventDate ? "text-rose-400" : "text-cyan-400"}`}>
-                {isEventDate ? <Flame className="w-4 h-4 text-rose-500 animate-pulse" /> : <Calendar className="w-4 h-4" />}
-                <span>{isEventDate ? "Active Disaster Date" : "Timeline Scrubber"}</span>
+              <div className={`flex items-center gap-1.5 ${isCritical ? "text-rose-400" : isHighRisk ? "text-amber-400" : "text-cyan-400"}`}>
+                {isCritical ? <Flame className="w-4 h-4 text-rose-500 animate-pulse" /> : <Calendar className="w-4 h-4" />}
+                <span>{isCritical ? "Active Hazard Target" : "Timeline Scrubber"}</span>
               </div>
               <div className="flex items-center gap-1 font-mono text-[10px] text-slate-300 bg-slate-800/90 px-1.5 py-0.5 rounded border border-slate-700">
                 <Clock className="w-3 h-3 text-cyan-400" />
@@ -915,10 +940,10 @@ export default function Dashboard() {
               <input
                 type="date"
                 value={selectedDate}
-                max={todayStr} // Strict boundation: cannot exceed today's date
+                max={todayStr}
                 onChange={(e) => handleDateChange(e.target.value)}
                 className={`border text-white text-xs px-2 py-1 rounded w-full outline-none transition text-center font-mono ${
-                  isEventDate 
+                  isCritical 
                     ? "bg-[#170a0d] border-rose-700 focus:border-rose-500 font-bold" 
                     : "bg-[#121418] border-slate-700 focus:border-cyan-500"
                 }`}
@@ -953,7 +978,7 @@ export default function Dashboard() {
               <input
                 type="range"
                 min={timelineMin}
-                max={timelineMax} // Boundation: Capped at today
+                max={timelineMax}
                 step={86400000}
                 value={currentSliderTime}
                 onChange={handleSliderChange}
@@ -962,7 +987,7 @@ export default function Dashboard() {
               <div className="flex justify-between text-[9px] text-slate-500 font-mono">
                 <span>Aug 01</span>
                 <span className="text-rose-400 font-bold">Aug 26 (Disaster)</span>
-                <span className="text-cyan-400 font-semibold">Today (Oct 14)</span>
+                <span className="text-cyan-400 font-semibold">Today ({todayStr.slice(5)})</span>
               </div>
             </div>
           </div>
@@ -1097,7 +1122,7 @@ export default function Dashboard() {
           </div>
         </div>
       ) : (
-        /* FOLDED LEFT CHIP (Full View Mode) */
+        /* FOLDED LEFT CHIP */
         <button
           onClick={() => setIsLeftPanelOpen(true)}
           style={{ position: "absolute", top: 20, left: 20, zIndex: 1000 }}
@@ -1109,36 +1134,30 @@ export default function Dashboard() {
         </button>
       )}
 
-      {/* 3. RIGHT COLUMN: CONTROL & INFO PANEL (COLLAPSIBLE / FOLDABLE) */}
+      {/* 3. RIGHT COLUMN: CONTROL & INFO PANEL (DYNAMIC DANGER COLOR PALETTE) */}
       {isRightPanelOpen ? (
         <div
           style={{ position: "absolute", top: 20, right: 20, zIndex: 1000, width: 440 }}
-          className={`backdrop-blur-md rounded-xl shadow-2xl flex flex-col max-h-[94vh] overflow-hidden transition-all duration-300 border ${
-            isEventDate
-              ? "bg-[#180a0e]/95 border-rose-600/90 shadow-rose-950/80"
-              : "bg-[#16181d]/95 border-slate-700/70"
-          }`}
+          className={`backdrop-blur-md rounded-xl shadow-2xl flex flex-col max-h-[94vh] overflow-hidden transition-all duration-300 border ${panelThemeClass}`}
         >
           {/* Header with Fold Button */}
-          <div className={`p-3.5 border-b flex items-center justify-between transition-colors duration-300 ${
-            isEventDate ? "bg-[#250d14] border-rose-800/80" : "bg-[#121418] border-slate-800"
-          }`}>
+          <div className={`p-3.5 border-b flex items-center justify-between transition-colors duration-300 ${panelHeaderClass}`}>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsRightPanelOpen(false)}
-                className="p-1.5 rounded-md hover:bg-slate-800 text-slate-400 hover:text-white transition mr-0.5"
+                className="p-1.5 rounded-md hover:bg-black/20 text-slate-400 hover:text-white transition mr-0.5"
                 title="Fold Panel for Full Map View"
               >
                 <PanelRightClose className="w-4 h-4" />
               </button>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className={`w-2.5 h-2.5 rounded-full ${isEventDate ? 'bg-rose-500 animate-ping' : 'bg-cyan-400'}`}></span>
-                  <h2 className={`text-xs uppercase tracking-wider font-bold ${isEventDate ? 'text-rose-100' : 'text-white'}`}>
-                    {isEventDate ? "EMERGENCY DISASTER CONTROL" : "Control & Info Panel"}
+                  <span className={`w-2.5 h-2.5 rounded-full ${isCritical ? 'bg-rose-500 animate-ping' : isHighRisk ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`}></span>
+                  <h2 className={`text-xs uppercase tracking-wider font-bold ${isCritical ? 'text-rose-100' : 'text-white'}`}>
+                    {isCritical ? "CRITICAL DISASTER CONTROL" : isHighRisk ? "HAZARD ADVISORY CONTROL" : "Normal Field Monitoring"}
                   </h2>
                 </div>
-                <p className={`text-[10px] font-mono mt-0.5 truncate max-w-[210px] ${isEventDate ? 'text-rose-300 font-semibold' : 'text-cyan-400'}`}>
+                <p className={`text-[10px] font-mono mt-0.5 truncate max-w-[210px] ${isCritical ? 'text-rose-300 font-semibold' : 'text-cyan-400'}`}>
                   Inspecting: {selectedLocation.name}
                 </p>
               </div>
@@ -1147,8 +1166,8 @@ export default function Dashboard() {
               <button
                 onClick={triggerPipeline}
                 disabled={isRunningPipeline}
-                className={`flex items-center gap-1 text-white text-xs font-semibold px-2 py-1.5 rounded-md transition shadow ${
-                  isEventDate ? "bg-rose-600 hover:bg-rose-500 shadow-rose-950" : "bg-blue-600 hover:bg-blue-500"
+                className={`flex items-center gap-1 text-white text-xs font-semibold px-2.5 py-1.5 rounded-md transition shadow ${
+                  isCritical ? "bg-rose-600 hover:bg-rose-500 shadow-rose-950" : "bg-blue-600 hover:bg-blue-500"
                 }`}
               >
                 {isRunningPipeline ? (
@@ -1160,8 +1179,8 @@ export default function Dashboard() {
               </button>
               <button
                 onClick={openSitRepModal}
-                className={`flex items-center gap-1 text-white text-xs font-semibold px-2 py-1.5 rounded-md transition shadow ${
-                  isEventDate ? "bg-rose-700 hover:bg-rose-600 shadow-rose-950" : "bg-emerald-600 hover:bg-emerald-500"
+                className={`flex items-center gap-1 text-white text-xs font-semibold px-2.5 py-1.5 rounded-md transition shadow ${
+                  isCritical ? "bg-rose-700 hover:bg-rose-600 shadow-rose-950" : "bg-emerald-600 hover:bg-emerald-500"
                 }`}
               >
                 <FileDown className="w-3.5 h-3.5" />
@@ -1171,15 +1190,13 @@ export default function Dashboard() {
           </div>
 
           {/* 4-Tab Navigator with LOCATION-SPECIFIC HISTORY */}
-          <div className={`grid grid-cols-4 border-b p-1.5 gap-1 transition-colors duration-300 ${
-            isEventDate ? "bg-[#1d0b10] border-rose-900/60" : "bg-[#121418] border-slate-800"
-          }`}>
+          <div className="grid grid-cols-4 border-b border-black/30 p-1.5 gap-1 bg-black/20">
             <button
               onClick={() => setActiveTab("summary")}
               className={`py-2 px-1 text-center rounded text-[11px] font-semibold uppercase tracking-wider transition ${
                 activeTab === "summary"
-                  ? isEventDate ? "bg-rose-600 text-white shadow-md shadow-rose-950" : "bg-slate-700 text-white shadow"
-                  : isEventDate ? "text-rose-300 hover:bg-rose-950/40" : "text-slate-400 hover:bg-slate-800/50"
+                  ? isCritical ? "bg-rose-600 text-white shadow-md shadow-rose-950" : isHighRisk ? "bg-amber-600 text-white shadow" : "bg-slate-700 text-white shadow"
+                  : isCritical ? "text-rose-300 hover:bg-rose-950/40" : "text-slate-400 hover:bg-slate-800/50"
               }`}
             >
               Summary
@@ -1188,8 +1205,8 @@ export default function Dashboard() {
               onClick={() => setActiveTab("cutoff")}
               className={`py-2 px-1 text-center rounded text-[11px] font-semibold uppercase tracking-wider transition ${
                 activeTab === "cutoff"
-                  ? isEventDate ? "bg-rose-600 text-white shadow-md shadow-rose-950" : "bg-slate-700 text-white shadow"
-                  : isEventDate ? "text-rose-300 hover:bg-rose-950/40" : "text-slate-400 hover:bg-slate-800/50"
+                  ? isCritical ? "bg-rose-600 text-white shadow-md shadow-rose-950" : isHighRisk ? "bg-amber-600 text-white shadow" : "bg-slate-700 text-white shadow"
+                  : isCritical ? "text-rose-300 hover:bg-rose-950/40" : "text-slate-400 hover:bg-slate-800/50"
               }`}
             >
               Cut-Off
@@ -1198,8 +1215,8 @@ export default function Dashboard() {
               onClick={() => setActiveTab("sites")}
               className={`py-2 px-1 text-center rounded text-[11px] font-semibold uppercase tracking-wider transition text-ellipsis overflow-hidden whitespace-nowrap ${
                 activeTab === "sites"
-                  ? isEventDate ? "bg-rose-600 text-white shadow-md shadow-rose-950" : "bg-slate-700 text-white shadow"
-                  : isEventDate ? "text-rose-300 hover:bg-rose-950/40" : "text-slate-400 hover:bg-slate-800/50"
+                  ? isCritical ? "bg-rose-600 text-white shadow-md shadow-rose-950" : isHighRisk ? "bg-amber-600 text-white shadow" : "bg-slate-700 text-white shadow"
+                  : isCritical ? "text-rose-300 hover:bg-rose-950/40" : "text-slate-400 hover:bg-slate-800/50"
               }`}
             >
               Flood Sites
@@ -1223,14 +1240,16 @@ export default function Dashboard() {
             {activeTab === "summary" && (
               <div className="space-y-3">
                 <div className={`p-2.5 rounded-lg flex flex-col gap-1 border transition-colors duration-300 ${
-                  isEventDate
+                  isCritical
                     ? "bg-rose-950/80 border-rose-600 text-rose-100 shadow-sm shadow-rose-900"
+                    : isHighRisk
+                    ? "bg-amber-950/60 border-amber-600 text-amber-200"
                     : "bg-slate-800/90 border-slate-700/80 text-slate-300"
                 }`}>
                   <div className="flex items-center justify-between text-[11px]">
                     <div className="flex items-center gap-1.5">
-                      <Calendar className={`w-3.5 h-3.5 ${isEventDate ? "text-rose-300" : "text-cyan-400"}`} />
-                      <span>Target Date: <strong className={isEventDate ? "text-rose-200" : "text-white"}>{selectedDate}</strong></span>
+                      <Calendar className={`w-3.5 h-3.5 ${isCritical ? "text-rose-300" : "text-cyan-400"}`} />
+                      <span>Target Date: <strong className={isCritical ? "text-rose-200" : "text-white"}>{selectedDate}</strong></span>
                     </div>
                     {isEventDate && (
                       <span className="text-[9px] font-bold uppercase bg-rose-600 text-white px-2 py-0.5 rounded tracking-wide animate-pulse">
@@ -1246,44 +1265,40 @@ export default function Dashboard() {
 
                 <div className="flex justify-between items-center text-[11px] font-semibold tracking-wider uppercase text-slate-400">
                   <span>Damage Status on {selectedDate}</span>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                    selectedLocation.isFlooded || isEventDate
-                      ? "bg-rose-500/20 text-rose-400 border border-rose-500/40"
-                      : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
-                  }`}>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${panelPillClass}`}>
                     {selectedLocation.alertLevel}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2.5">
                   <div className={`p-2.5 rounded-lg border transition ${
-                    isEventDate ? "bg-[#250d14] border-rose-900/80" : "bg-[#1e222a] border-slate-800"
+                    isCritical ? "bg-[#250d14] border-rose-900/80" : isHighRisk ? "bg-[#25190a] border-amber-900/80" : "bg-[#1e222a] border-slate-800"
                   }`}>
-                    <div className={`flex items-center gap-1 text-[11px] mb-1 ${isEventDate ? "text-rose-300" : "text-slate-400"}`}>
+                    <div className={`flex items-center gap-1 text-[11px] mb-1 ${isCritical ? "text-rose-300" : isHighRisk ? "text-amber-300" : "text-slate-400"}`}>
                       <Compass className="w-3 h-3 text-cyan-400" />
                       River Flow on Date
                     </div>
-                    <div className={`text-xl font-bold ${selectedLocation.isFlooded || isEventDate ? 'text-white' : 'text-emerald-400'}`}>
+                    <div className={`text-xl font-bold ${selectedLocation.isFlooded || isCritical ? 'text-white' : 'text-emerald-400'}`}>
                       {selectedLocation.stats?.floodedArea}
                     </div>
                   </div>
 
                   <div className={`p-2.5 rounded-lg border transition ${
-                    isEventDate ? "bg-[#250d14] border-rose-900/80" : "bg-[#1e222a] border-slate-800"
+                    isCritical ? "bg-[#250d14] border-rose-900/80" : isHighRisk ? "bg-[#25190a] border-amber-900/80" : "bg-[#1e222a] border-slate-800"
                   }`}>
-                    <div className={`flex items-center gap-1 text-[11px] mb-1 ${isEventDate ? "text-rose-300" : "text-slate-400"}`}>
+                    <div className={`flex items-center gap-1 text-[11px] mb-1 ${isCritical ? "text-rose-300" : isHighRisk ? "text-amber-300" : "text-slate-400"}`}>
                       <ShieldAlert className="w-3 h-3 text-rose-400" />
                       Cut-Off Status
                     </div>
-                    <div className="text-xl font-bold text-rose-400">
+                    <div className={`text-xl font-bold ${isSafe ? 'text-emerald-400' : 'text-rose-400'}`}>
                       {selectedLocation.stats?.cutOffTowns}
                     </div>
                   </div>
 
                   <div className={`p-2.5 rounded-lg border transition ${
-                    isEventDate ? "bg-[#250d14] border-rose-900/80" : "bg-[#1e222a] border-slate-800"
+                    isCritical ? "bg-[#250d14] border-rose-900/80" : isHighRisk ? "bg-[#25190a] border-amber-900/80" : "bg-[#1e222a] border-slate-800"
                   }`}>
-                    <div className={`flex items-center gap-1 text-[11px] mb-1 ${isEventDate ? "text-rose-300" : "text-slate-400"}`}>
+                    <div className={`flex items-center gap-1 text-[11px] mb-1 ${isCritical ? "text-rose-300" : isHighRisk ? "text-amber-300" : "text-slate-400"}`}>
                       <Navigation className="w-3 h-3 text-amber-400" />
                       Highway Impact
                     </div>
@@ -1293,53 +1308,55 @@ export default function Dashboard() {
                   </div>
 
                   <div className={`p-2.5 rounded-lg border transition ${
-                    isEventDate ? "bg-[#250d14] border-rose-900/80" : "bg-[#1e222a] border-slate-800"
+                    isCritical ? "bg-[#250d14] border-rose-900/80" : isHighRisk ? "bg-[#25190a] border-amber-900/80" : "bg-[#1e222a] border-slate-800"
                   }`}>
-                    <div className={`flex items-center gap-1 text-[11px] mb-1 ${isEventDate ? "text-rose-300" : "text-slate-400"}`}>
+                    <div className={`flex items-center gap-1 text-[11px] mb-1 ${isCritical ? "text-rose-300" : isHighRisk ? "text-amber-300" : "text-slate-400"}`}>
                       <Building className="w-3 h-3 text-indigo-400" />
                       Structures Affected
                     </div>
-                    <div className={`text-xl font-bold ${selectedLocation.isFlooded || isEventDate ? 'text-white' : 'text-emerald-400'}`}>
+                    <div className={`text-xl font-bold ${selectedLocation.isFlooded || isCritical ? 'text-white' : 'text-emerald-400'}`}>
                       {selectedLocation.stats?.damagedBld}
                     </div>
                   </div>
                 </div>
 
                 <div className={`p-2.5 rounded-lg flex items-start gap-2 border ${
-                  selectedLocation.isFlooded || isEventDate
+                  isCritical
                     ? "bg-rose-950/40 border-rose-800 text-rose-200"
+                    : isHighRisk
+                    ? "bg-amber-950/40 border-amber-800 text-amber-200"
                     : "bg-emerald-950/30 border-emerald-900/60 text-emerald-200"
                 }`}>
-                  {selectedLocation.isFlooded || isEventDate ? (
+                  {selectedLocation.isFlooded || isCritical ? (
                     <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                   ) : (
                     <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                   )}
                   <div className="text-[11px] leading-relaxed">
-                    <span className="font-semibold">{selectedLocation.isFlooded || isEventDate ? "Damage Advisory: " : "Status Assessment: "}</span>
+                    <span className="font-semibold">{selectedLocation.isFlooded || isCritical ? "Damage Advisory: " : "Status Assessment: "}</span>
                     {selectedLocation.warning || selectedLocation.cause}
                   </div>
                 </div>
 
                 <div className={`p-2.5 rounded-lg space-y-1.5 text-xs border ${
-                  isEventDate ? "bg-[#1a080c] border-rose-900/60 text-rose-100" : "bg-[#121418] border-slate-800 text-slate-300"
+                  isCritical ? "bg-[#1a080c] border-rose-900/60 text-rose-100" : "bg-[#121418] border-slate-800 text-slate-300"
                 }`}>
                   <div className="flex justify-between">
-                    <span className={isEventDate ? "text-rose-300" : "text-slate-500"}>Elevation:</span>
+                    <span className={isCritical ? "text-rose-300" : "text-slate-500"}>Elevation:</span>
                     <strong className="text-cyan-400 font-mono">{selectedLocation.elevation}</strong>
                   </div>
                   <div className="flex justify-between">
-                    <span className={isEventDate ? "text-rose-300" : "text-slate-500"}>Disaster Time:</span>
+                    <span className={isCritical ? "text-rose-300" : "text-slate-500"}>Disaster Time:</span>
                     <strong className="text-rose-400 font-mono">{selectedLocation.eventDateTime || "Normal"}</strong>
                   </div>
                   <div className="flex justify-between">
-                    <span className={isEventDate ? "text-rose-300" : "text-slate-500"}>Food / Medical Reserves:</span>
-                    <strong className={selectedLocation.isFlooded || isEventDate ? "text-amber-300" : "text-emerald-400"}>
+                    <span className={isCritical ? "text-rose-300" : "text-slate-500"}>Food / Medical Reserves:</span>
+                    <strong className={selectedLocation.isFlooded || isCritical ? "text-amber-300" : "text-emerald-400"}>
                       {selectedLocation.reserves}
                     </strong>
                   </div>
                   <div className="flex justify-between">
-                    <span className={isEventDate ? "text-rose-300" : "text-slate-500"}>Evacuation Base:</span>
+                    <span className={isCritical ? "text-rose-300" : "text-slate-500"}>Evacuation Base:</span>
                     <strong className="text-slate-200">{selectedLocation.evacHub}</strong>
                   </div>
                 </div>
@@ -1361,7 +1378,7 @@ export default function Dashboard() {
                       className={`p-2.5 rounded-lg border transition cursor-pointer ${
                         selectedLocation.id === settlement.id
                           ? "bg-rose-950/60 border-rose-500 shadow-md shadow-rose-950"
-                          : isEventDate
+                          : isCritical
                           ? "bg-[#250d14] border-rose-900/70 hover:border-rose-600"
                           : "bg-[#1e222a] border-slate-800 hover:border-slate-700 hover:bg-[#252a35]"
                       }`}
@@ -1408,7 +1425,7 @@ export default function Dashboard() {
                       className={`p-2.5 rounded-lg border transition cursor-pointer ${
                         selectedLocation.id === site.id
                           ? "bg-cyan-950/40 border-cyan-500 shadow-md"
-                          : isEventDate
+                          : isCritical
                           ? "bg-[#250d14] border-rose-900/70 hover:border-rose-600"
                           : "bg-[#1e222a] border-slate-800 hover:border-slate-700 hover:bg-[#252a35]"
                       }`}
@@ -1521,26 +1538,24 @@ export default function Dashboard() {
           </div>
 
           {/* Attribution Footer */}
-          <div className={`p-2.5 border-t text-[9px] leading-tight transition-colors duration-300 ${
-            isEventDate ? "bg-[#15070a] border-rose-900/60 text-rose-300/70" : "bg-[#121418] border-slate-800/80 text-slate-500"
-          }`}>
+          <div className="p-2.5 border-t border-black/30 bg-black/20 text-[9px] leading-tight text-slate-400">
             <div>Contains modified Copernicus Sentinel data 2026. Produced using WorldDEM-30.</div>
             <div>&copy; OpenStreetMap contributors.</div>
           </div>
         </div>
       ) : (
-        /* FOLDED RIGHT CHIP (Full View Mode) */
+        /* FOLDED RIGHT CHIP */
         <button
           onClick={() => setIsRightPanelOpen(true)}
           style={{ position: "absolute", top: 20, right: 20, zIndex: 1000 }}
           className={`flex items-center gap-2 border px-3 py-2 rounded-lg text-xs font-semibold shadow-2xl transition ${
-            isEventDate
+            isCritical
               ? "bg-[#250d14]/95 border-rose-600 text-rose-200 hover:bg-rose-900"
               : "bg-[#16181d]/95 hover:bg-slate-800 border-slate-700 text-white"
           }`}
           title="Unfold Control & Info Panel"
         >
-          <PanelRightOpen className={`w-4 h-4 ${isEventDate ? "text-rose-400" : "text-cyan-400"}`} />
+          <PanelRightOpen className={`w-4 h-4 ${isCritical ? "text-rose-400" : "text-cyan-400"}`} />
           <span>Open Control Panel</span>
         </button>
       )}
