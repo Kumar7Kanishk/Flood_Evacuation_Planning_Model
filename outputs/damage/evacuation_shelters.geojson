@@ -1,0 +1,11 @@
+{
+"type": "FeatureCollection",
+"name": "evacuation_shelters",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "id": "SHELTER-01", "name": "Mandi Government College High Ground Shelter", "capacity": 850, "status": "active_open", "medical_support": true, "food_rations_days": 7, "elevation_m": 880 }, "geometry": { "type": "Point", "coordinates": [ 76.97224, 31.7704 ] } },
+{ "type": "Feature", "properties": { "id": "SHELTER-02", "name": "Padhar Community Hall & Sports Center", "capacity": 500, "status": "active_open", "medical_support": true, "food_rations_days": 5, "elevation_m": 920 }, "geometry": { "type": "Point", "coordinates": [ 77.07976, 31.7616 ] } },
+{ "type": "Feature", "properties": { "id": "SHELTER-03", "name": "Bhikampur Relief Camp", "capacity": 400, "status": "active_open", "medical_support": false, "food_rations_days": 4, "elevation_m": 860 }, "geometry": { "type": "Point", "coordinates": [ 76.97896, 31.634 ] } },
+{ "type": "Feature", "properties": { "id": "SHELTER-04", "name": "East Ridge Emergency Base", "capacity": 650, "status": "active_open", "medical_support": true, "food_rations_days": 6, "elevation_m": 940 }, "geometry": { "type": "Point", "coordinates": [ 77.0848, 31.645 ] } }
+]
+}

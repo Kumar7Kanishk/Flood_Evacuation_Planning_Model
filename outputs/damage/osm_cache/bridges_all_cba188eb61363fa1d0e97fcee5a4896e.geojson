@@ -1,0 +1,10 @@
+{
+"type": "FeatureCollection",
+"name": "bridges_all_cba188eb61363fa1d0e97fcee5a4896e",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "osm_id": "way/300101", "name": "Victoria Memorial Suspension Bridge", "bridge": "yes", "highway": "secondary" }, "geometry": { "type": "LineString", "coordinates": [ [ 77.0176, 31.667 ], [ 77.02936, 31.667 ] ] } },
+{ "type": "Feature", "properties": { "osm_id": "way/300102", "name": "Old Beas River Bridge", "bridge": "yes", "highway": "primary" }, "geometry": { "type": "LineString", "coordinates": [ [ 77.01592, 31.6956 ], [ 77.02768, 31.6956 ] ] } },
+{ "type": "Feature", "properties": { "osm_id": "way/300103", "name": "North Bypass Overpass", "bridge": "yes", "highway": "secondary" }, "geometry": { "type": "LineString", "coordinates": [ [ 77.0176, 31.7396 ], [ 77.03104, 31.7396 ] ] } }
+]
+}

@@ -1,0 +1,31 @@
+{
+  "generated_at": "2026-10-14 13:29 UTC",
+  "metrics": {
+    "flooded_area_km2": 66.459,
+    "flooded_roads_km": 25.32,
+    "inundated_buildings": 16,
+    "cut_off_settlements": 2
+  },
+  "report_en": "================================================================================\nOFFICIAL DISASTER SITUATION REPORT (SITREP) — TRISHULI CORRIDOR FLOOD\nGenerated: 2026-10-14 13:29 UTC | Satellite Source: Sentinel-1 SAR & Sentinel-2 Optical\n================================================================================\n\n1. EXECUTIVE CRISIS SUMMARY:\n   Following high-altitude glacial mass movement and outburst flood down the\n   Bhote Koshi–Trishuli corridor, satellite-derived change detection maps an active\n   inundation footprint of 66.459 sq km.\n\n2. CRITICAL INFRASTRUCTURE DAMAGE ASSESSMENT:\n   • Road Network: 25.32 km of roadway impassable or severed due to embankment erosion.\n   • Building Structures: 16 buildings inundated out of 70 assessed pre-event structures.\n   • Key Crossings: Major bridge links spanning tributary fans are compromised.\n\n3. RESCUE & EVACUATION PRIORITY (CUT-OFF ZONES):\n   A total of 2 primary settlements have lost all ground transport connectivity:\n   - Syabrubesi: Pop. 2450 | Status: CRITICAL | Reserves: 1 Day (< 24 hrs)\n   - Mailung: Pop. 830 | Status: HIGH RISK | Reserves: 4 Days\n   - Betrawati: Pop. 1120 | Status: MONITORED | Reserves: 6 Days\n\n4. OPERATIONAL RECOMMENDATIONS FOR RESCUERS:\n   • Prioritize aerial resupply to Syabrubesi within 24-48 hours.\n   • Establish footbridge / zip-line crossing at severed highway sections.\n   • Evacuate low-lying river terrace communities ahead of secondary mudflow surges.\n\nATTRIBUTION & DATA INTEGRITY:\nContains modified Copernicus Sentinel data 2026.\nProduced using Copernicus WorldDEM-30 © DLR e.V. and © Airbus Defence and Space GmbH.\n(c) OpenStreetMap contributors (ODbL pre-event snapshot 2026-07-27).\n================================================================================",
+  "report_ne": "================================================================================\nविपद् वस्तुस्थिति प्रतिवेदन (SITREP) — त्रिशूली करिडोर बाढी तथा पहिरो\nजारी मिति: 2026-10-14 13:29 UTC | उपग्रह स्रोत: सेन्टिनेल-१ SAR र सेन्टिनेल-२\n================================================================================\n\n१. मुख्य विपद् सारांश:\n   भोटेकोशी-त्रिशूली नदी जलाधार क्षेत्रमा हिमपहिरो तथा बाढीका कारण 66.459 वर्ग कि.मी.\n   क्षेत्र जलमग्न तथा लेदोले ढाकिएको उपग्रह विश्लेषणबाट पुष्टि भएको छ।\n\n२. भौतिक पूर्वाधार क्षति विवरण:\n   • सडक सञ्जाल: 25.32 कि.मी. सडक खण्ड बाढी तथा पहिरोले पूर्ण रूपमा अवरुद्ध।\n   • भवन तथा आवास: पूर्व-विपद् संरचनाहरू मध्ये 16 घरहरू प्रत्यक्ष डुबानमा।\n   • पुल तथा जलविद्युत: मुख्य पहुँच पुलहरू तथा त्रिशूली इन्टेकमा गम्भीर क्षति।\n\n३. सडक सम्पर्क विच्छेद भएका बस्तीहरू:\n   - Syabrubesi: जनसंख्या 2450 | अवस्था: CRITICAL | मौज्दात सामग्री: 1 Day (< 24 hrs)\n   - Mailung: जनसंख्या 830 | अवस्था: HIGH RISK | मौज्दात सामग्री: 4 Days\n   - Betrawati: जनसंख्या 1120 | अवस्था: MONITORED | मौज्दात सामग्री: 6 Days\n\n४. उद्धार तथा राहत टोलीका लागि तत्काल निर्देशन:\n   • स्याफ्रुबेँसीमा ४८ घण्टाभित्र हवाई मार्गबाट खाद्यान्न तथा औषधि ढुवानी गर्नुपर्ने।\n   • अवरुद्ध सडक खण्डहरूमा अस्थायी तुइन वा झोलुङ्गे पुलको वैकल्पिक व्यवस्था गर्ने।\n================================================================================",
+  "cutoffs": [
+    {
+      "name": "Syabrubesi",
+      "population": 2450,
+      "status": "CRITICAL",
+      "reserves": "1 Day (< 24 hrs)"
+    },
+    {
+      "name": "Mailung",
+      "population": 830,
+      "status": "HIGH RISK",
+      "reserves": "4 Days"
+    },
+    {
+      "name": "Betrawati",
+      "population": 1120,
+      "status": "MONITORED",
+      "reserves": "6 Days"
+    }
+  ]
+}

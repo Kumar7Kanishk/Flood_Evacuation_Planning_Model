@@ -1,0 +1,8 @@
+geopandas>=1.0
+shapely>=2.1
+rasterio>=1.3
+pandas
+numpy
+requests
+pyogrio
+sentinelhub>=3.10.0

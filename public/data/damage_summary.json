@@ -1,0 +1,68 @@
+{
+  "parameters": {
+    "osm_snapshot": "2023-07-01",
+    "near_flood_distance_m": 30.0,
+    "bridge_buffer_m": 15.0,
+    "min_flooded_road_length_m": 15.0,
+    "min_flood_polygon_area_m2": 500.0
+  },
+  "flood": {
+    "area_km2": 66.459,
+    "area_km2_by_kind": {
+      "debris": 12.583,
+      "water": 53.876
+    },
+    "polygons": 5
+  },
+  "buildings": {
+    "total_in_aoi": 70,
+    "unaffected": 51,
+    "inundated": 16,
+    "partially_hit": 3,
+    "hit_by_osm_type": {
+      "hospital": 6,
+      "civic": 5,
+      "residential": 4,
+      "commercial": 2,
+      "school": 1,
+      "apartments": 1
+    }
+  },
+  "roads": {
+    "total_length_km": 117.49,
+    "flooded_length_km": 25.32,
+    "segments_affected": 10,
+    "segments_clear": 7,
+    "flooded_km_by_class": {
+      "primary": 14.3,
+      "secondary": 6.03,
+      "residential": 2.73,
+      "tertiary": 2.27
+    }
+  },
+  "bridges": {
+    "total_in_aoi": 3,
+    "likely_damaged": 2,
+    "unaffected": 1,
+    "likely_damaged_list": [
+      {
+        "osm_id": "way/300101",
+        "name": "Victoria Memorial Suspension Bridge"
+      },
+      {
+        "osm_id": "way/300102",
+        "name": "Old Beas River Bridge"
+      }
+    ]
+  },
+  "evacuation": {
+    "active_shelters": 4,
+    "total_shelter_capacity": 2400,
+    "safe_corridors_km": 12.64,
+    "estimated_people_at_risk": 95
+  },
+  "attribution": [
+    "Contains modified Copernicus Sentinel data.",
+    "(c) OpenStreetMap contributors."
+  ]
+}
