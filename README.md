@@ -1,16 +1,61 @@
-# React + Vite
+# AeroSentry: Spaceborne Flood & Debris Crisis Intelligence
+### Multimodal AI Hackathon 2026 — Track B: Mapping Flood Damage from Space
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?logo=fastapi)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react)](https://react.dev)
+[![Leaflet](https://img.shields.io/badge/Leaflet-1.9.4-199900?logo=leaflet)](https://leafletjs.com)
+[![Copernicus](https://img.shields.io/badge/Copernicus-Sentinel--1%20%2F%20GloFAS-003399)](https://dataspace.copernicus.eu)
+[![OpenStreetMap](https://img.shields.io/badge/OSM-ohsome%20API-7EBC6F?logo=openstreetmap)](https://ohsome.org)
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 📌 Executive Summary
 
-## React Compiler
+During catastrophic mountain hazards, ground sensors wash away, and road and telecommunication links collapse. **AeroSentry** is an autonomous crisis mapping and disaster intelligence platform built to answer three vital rescue questions directly from orbit:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. **Where did the flood hit?** Cloud-penetrating Sentinel-1 SAR change detection and Sentinel-2 multi-spectral debris mapping.
+2. **What was damaged?** Pre-event OpenStreetMap (ohsome API) spatial intersection measuring inundated buildings, severed roads, and compromised bridges.
+3. **Who is cut off?** Road-network graph connectivity determining isolated settlements, affected populations, and remaining medical/food reserve timelines.
 
-## Expanding the Oxlint configuration
+The platform includes an **AI Situation-Report Copilot** delivering non-hallucinated bilingual reports in English and the local dialect (Nepali/Hindi/regional languages), a **100-Year Disaster History Archive**, a **Smooth Timeline Scrubber**, and an **Interactive, Collapsible GIS Dashboard** built for both desktop command centers and mobile field units.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+---
+
+## 🎯 Case Study: 26 August 2026 Trishuli Flood Event
+
+On **26 August 2026**, a high-altitude glacial collapse in the Langtang Lirung / northern Nepal catchment triggered an ice and rock avalanche, sending a catastrophic flood wave and sediment slurry down the **Bhote Koshi–Trishuli River corridor**. 
+
+AeroSentry maps this event, isolates cut-off settlements along the gorge (such as *Syabrubesi*, *Mailung*, and *Betrawati*), and benchmarks findings against the **Copernicus Emergency Management Service (EMS) activation EMSR927**.
+
+---
+
+## ⚙️ Core Architecture & Pipeline
+
+```text
+       [ Sentinel-1 SAR (Radar) ]          [ Sentinel-2 (Optical) ]
+       (Penetrates monsoon clouds)         (Debris plume detection)
+                    │                                 │
+                    ▼                                 ▼
+         [ Change-Detection Engine: Δσ⁰ Backscatter Drop ]
+                                │
+                                ▼
+                   [ outputs/flood_mask.tif ]
+                                │
+                                ▼
+  [ Pre-Event OpenStreetMap (Snapshot: 2026-07-27 via ohsome API) ]
+                                │
+        ┌───────────────────────┼───────────────────────┐
+        ▼                       ▼                       ▼
+[ Inundated Buildings ]  [ Severed Roads ]      [ Damaged Bridges ]
+        └───────────────────────┬───────────────────────┘
+                                │
+                                ▼
+             [ NetworkX Graph Isolation Engine ]
+            (Determines cut-off settlements & days of reserves)
+                                │
+                                ▼
+        [ Bilingual Situation-Report Copilot (Eng + Local) ]
+                                │
+                                ▼
+       [ Responsive React + Leaflet + Tailwind Dashboard ]
+       (Live Copernicus GloFAS streamflow & 100-yr history)
